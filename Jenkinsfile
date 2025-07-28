@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'arun256docker/fastapi-app'
-        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
-        DOCKER_TAG = "latest" // You can use build number or git hash here for versioning
+        IMAGE_NAME = 'arun256docker/fastapi-app:latest'
     }
 
     stages {
@@ -17,18 +15,21 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "Building Docker image: ${IMAGE_NAME}:${DOCKER_TAG}"
-                    dockerImage = docker.build("${IMAGE_NAME}:${DOCKER_TAG}")
+                    echo "Building Docker image: ${env.IMAGE_NAME}"
+                    bat "docker build -t ${env.IMAGE_NAME} ."
                 }
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    echo "Pushing Docker image to Docker Hub..."
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        dockerImage.push()
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    script {
+                        bat """
+                            docker context use default
+                            echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin
+                            docker push ${env.IMAGE_NAME}
+                        """
                     }
                 }
             }
@@ -37,18 +38,18 @@ pipeline {
         stage('Clean Up Local Image') {
             steps {
                 script {
-                    echo "Cleaning up local Docker image..."
-                    sh "docker rmi ${IMAGE_NAME}:${DOCKER_TAG} || true"
+                    bat "docker rmi ${env.IMAGE_NAME} || exit 0"
                 }
             }
         }
 
         stage('Deploy (Optional)') {
             when {
-                expression { return false } // Change to true if deployment is configured
+                expression { return false } // Change to true when you implement deployment
             }
             steps {
-                echo 'Deployment logic goes here (e.g., Docker run, SSH to server, kubectl apply)'
+                echo 'Deploying application...'
+                // Insert deployment logic here
             }
         }
     }
