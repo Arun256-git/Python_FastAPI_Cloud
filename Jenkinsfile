@@ -48,7 +48,7 @@ pipeline {
                 expression { return false } // Change to true when you implement deployment
             }
             steps {
-                echo 'Deploying application...'
+                echo 'This stage is disabled.'
                 // Insert deployment logic here
             }
         }
